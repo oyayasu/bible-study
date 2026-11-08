@@ -1,0 +1,59 @@
+name: Publish v0.1.0 Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/release-v0.1.0.yml'
+
+permissions:
+  actions: read
+  contents: write
+
+jobs:
+  publish:
+    name: Upload Android APK to GitHub Releases
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Download already-tested APK
+        run: |
+          gh run download 42510656184 \
+            --repo "$GITHUB_REPOSITORY" \
+            --name "Biblia-v0.1-Android-APK" \
+            --dir dist
+          test -s dist/app-debug.apk
+          mv dist/app-debug.apk dist/Biblia-Estudos-v0.1.0.apk
+
+      - name: Write release notes
+        run: |
+          cat > release-notes.md <<'EOF'
+          ## Bíblia • Estudos — v0.1.0
+
+          Primeira versão de testes para Android.
+
+          - Interface nativa com Jetpack Compose, tons de vinho, marfim e dourado.
+          - Meditações diárias às 06h00 e às 20h30 (horário local do dispositivo).
+          - Biblioteca com quatro estudos demonstrativos.
+          - Seções em português, idioma original e contexto histórico.
+          - Diário privado e reflexões por sessão.
+          - Armazenamento local, sem conta ou anúncios.
+
+          **Instalação:** baixe o arquivo `Biblia-Estudos-v0.1.0.apk` abaixo e abra-o no Android. É um APK de debug assinado com a chave de testes do GitHub Actions, recomendado apenas para testes pessoais.
+
+          **Observação:** a tradução Bíblia de Jerusalém (Paulus, edição de 2002) não é distribuída no APK por ter direitos autorais. É possível inserir trechos de uso pessoal no próprio aplicativo.
+
+          **Testes:** compilação e testes unitários passaram na execução de GitHub Actions que gerou este APK.
+          EOF
+
+      - name: Create release with the APK
+        run: |
+          gh release create v0.1.0 \
+            dist/Biblia-Estudos-v0.1.0.apk \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Bíblia • Estudos v0.1.0" \
+            --target "95f00be22247e4a2a67230c1a4e115050de56a75" \
+            --notes-file release-notes.md \
+            --prerelease
