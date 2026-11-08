@@ -91,6 +91,7 @@ private fun BibleStudyApplication() {
     var route by rememberSaveable { mutableStateOf("home") }
     var activeStudyId by rememberSaveable { mutableStateOf(StudyCatalog.studies.first().id) }
     var activeSession by rememberSaveable { mutableStateOf("morning") }
+    var activeDateString by rememberSaveable { mutableStateOf(LocalDate.now().toString()) }
 
     val today = LocalDate.now()
     val studyOfDay = StudyCatalog.studies[
@@ -99,6 +100,7 @@ private fun BibleStudyApplication() {
     val onOpenStudy: (Study, String) -> Unit = { study, session ->
         activeStudyId = study.id
         activeSession = session
+        activeDateString = LocalDate.now().toString()
         route = "reader"
     }
     val scheme = lightColorScheme(
@@ -129,12 +131,17 @@ private fun BibleStudyApplication() {
                         when (route) {
                             "home" -> HomeScreen(today, studyOfDay, store, onOpenStudy)
                             "library" -> LibraryScreen(onOpenStudy)
-                            "journal" -> JournalScreen(store, onOpenStudy)
+                            "journal" -> JournalScreen(store) { study, session, date ->
+                                activeStudyId = study.id
+                                activeSession = session
+                                activeDateString = date
+                                route = "reader"
+                            }
                             "settings" -> SettingsScreen(store)
                             "reader" -> ReaderScreen(
                                 StudyCatalog.find(activeStudyId),
                                 activeSession,
-                                today,
+                                LocalDate.parse(activeDateString),
                                 store,
                                 onBack = { route = if (activeSession == "library") "library" else "home" }
                             )
@@ -602,7 +609,7 @@ private fun ReaderScreen(
 @Composable
 private fun JournalScreen(
     store: LocalStudyStore,
-    openStudy: (Study, String) -> Unit
+    openStudy: (Study, String, String) -> Unit
 ) {
     val ignored = store.revision
     val entries = store.entries()
@@ -628,7 +635,7 @@ private fun JournalScreen(
         }
         items(entries) { entry ->
             val study = StudyCatalog.find(entry.studyId)
-            GlassCard(Modifier.fillMaxWidth().clickable { openStudy(study, entry.session) }) {
+            GlassCard(Modifier.fillMaxWidth().clickable { openStudy(study, entry.session, entry.date) }) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(entry.date, color = Gold, fontSize = 11.sp)
                     Text(
